@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF16">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Finance Tracker - Dark Mode</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons for aesthetic --><script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Deep Navy/Black Background for Dark Mode */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #0F172A; /* Tailwind slate-900 */
+            color: #E2E8F0; /* Tailwind slate-200 */
+        }
+        /* Message box styles for dark mode */
+        .success-bg { background-color: #155E75; color: #CCFBF1; } /* Darker Teal for success message */
+        .danger-bg { background-color: #7F1D1D; color: #FEE2E2; } /* Darker Red for danger message */
+
+        /* Card and component background */
+        .dark-card {
+            background-color: #1E293B; /* Tailwind slate-800 */
+        }
+
+        /* Custom styling for interactive list items */
+        .transaction-item {
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border: 1px solid transparent; 
+            background-color: #1E293B; /* Ensures list item is dark */
+        }
+        .transaction-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5); /* Stronger shadow for dark mode */
+            border-color: #2DD4BF; /* Teal border on hover */
+            background-color: #334155; /* Slightly lighter dark background on hover */
+        }
+        /* Custom styling for the main button */
+        #transaction-form button {
+            transition: all 0.2s ease-in-out;
+            background-color: #2DD4BF; /* Teal button */
+            color: #0F172A; /* Dark text on button */
+        }
+        #transaction-form button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 15px rgba(45, 212, 191, 0.4); /* Teal shadow */
+            background-color: #14B8A6; /* Slightly darker teal on hover */
+        }
+
+        /* Custom gradient text class */
+        .text-gradient {
+            background: linear-gradient(to right, #0EA5E9, #2DD4BF); /* Sky-400 to Teal-400 */
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent; /* Fallback for browsers that don't support background-clip */
+        }
+        
+        /* Share button styling inside history item */
+        .share-transaction-btn {
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <div id="app" class="max-w-5xl mx-auto">
+        <header class="text-center mb-10 p-6 dark-card rounded-3xl shadow-2xl border border-slate-700">
+            <!-- LOGO: Piggy Bank icon using flex to center --><h1 class="text-4xl md:text-5xl font-extrabold text-white mb-2 tracking-tight flex items-center justify-center">
+                <i data-lucide="piggy-bank" class="text-teal-400 w-10 h-10 mr-4"></i>
+                Finance <span class="text-teal-400">Flow</span>
+            </h1>
+            <p class="text-slate-400 text-lg">Track your flow, even in the dark.</p>
+        </header>
+
+        <!-- Loading & Status Messages --><div id="loading-indicator" class="text-center p-4 rounded-xl bg-blue-900 text-blue-300 font-medium hidden">
+            <i data-lucide="loader" class="inline w-5 h-5 animate-spin mr-2"></i> Initializing App...
+        </div>
+        <div id="auth-status" class="text-center text-sm mb-4 text-slate-500"></div>
+        <div id="message-box" class="hidden fixed top-5 right-5 z-50 p-3 rounded-xl shadow-2xl font-bold opacity-0 transition-opacity duration-300 transform translate-y-0"></div>
+
+        <!-- Dashboard Totals --><div id="dashboard" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-10">
+            <!-- Total Earnings Card --><div class="dark-card p-6 rounded-2xl shadow-xl hover:shadow-2xl transition duration-300 border-l-8 border-teal-500 transform hover:scale-[1.01] cursor-default">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-sm font-bold text-slate-400 uppercase">Total Earnings</h2>
+                    <i data-lucide="trending-up" class="text-teal-400 w-7 h-7"></i>
+                </div>
+                <!-- Earnings Amount Color: Sky Blue --><p id="total-earnings" class="mt-2 text-3xl font-extrabold text-sky-400">$0.00</p>
+            </div>
+
+            <!-- Total Expenses Card --><div class="dark-card p-6 rounded-2xl shadow-xl hover:shadow-2xl transition duration-300 border-l-8 border-red-500 transform hover:scale-[1.01] cursor-default">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-sm font-bold text-slate-400 uppercase">Total Expenses</h2>
+                    <i data-lucide="trending-down" class="text-red-400 w-7 h-7"></i>
+                </div>
+                <!-- Expenses Amount Color: RED --><p id="total-expenses" class="mt-2 text-3xl font-extrabold text-red-400">$0.00</p>
+            </div>
+
+            <!-- Current Balance Card --><div class="dark-card p-6 rounded-2xl shadow-xl hover:shadow-2xl transition duration-300 border-l-8 border-pink-500 transform hover:scale-[1.01] cursor-default">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-sm font-bold text-slate-400 uppercase">Current Balance</h2>
+                    <i data-lucide="wallet" class="text-pink-400 w-7 h-7"></i>
+                </div>
+                <!-- Balance is set to white by default, dynamic class handling is in JS --><p id="current-balance" class="mt-2 text-3xl font-extrabold text-white">$0.00</p>
+            </div>
+        </div>
+
+        <!-- Main Content: Form and History --><div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Transaction Form (1/3 width - Left) --><div class="lg:col-span-1 dark-card p-6 rounded-2xl shadow-2xl border border-slate-700 h-fit">
+                <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
+                    <i data-lucide="plus-circle" class="w-6 h-6 mr-2 text-teal-400"></i> Record New Flow
+                </h2>
+                <form id="transaction-form" class="space-y-5">
+                    <div>
+                        <label for="type" class="block text-sm font-semibold text-slate-300 mb-1">Type</label>
+                        <select id="type" required class="w-full p-3 border border-slate-600 rounded-xl bg-slate-700 text-white focus:ring-teal-500 focus:border-teal-500 transition duration-150 shadow-inner">
+                            <option value="earning">Earning (Income)</option>
+                            <option value="expense">Expense (Cost)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="description" class="block text-sm font-semibold text-slate-300 mb-1">Description</label>
+                        <input type="text" id="description" required class="w-full p-3 border border-slate-600 rounded-xl bg-slate-700 text-white focus:ring-teal-500 focus:border-teal-500 transition duration-150 shadow-inner" placeholder="e.g., Project Payment, Rent">
+                    </div>
+                    <div>
+                        <label for="amount" class="block text-sm font-semibold text-slate-300 mb-1">Amount ($)</label>
+                        <input type="number" id="amount" required min="0.01" step="0.01" class="w-full p-3 border border-slate-600 rounded-xl bg-slate-700 text-white focus:ring-teal-500 focus:border-teal-500 transition duration-150 shadow-inner" placeholder="e.g., 500.00">
+                    </div>
+                    <div>
+                        <label for="date" class="block text-sm font-semibold text-slate-300 mb-1">Date</label>
+                        <input type="date" id="date" required class="w-full p-3 border border-slate-600 rounded-xl bg-slate-700 text-white focus:ring-teal-500 focus:border-teal-500 transition duration-150 shadow-inner">
+                    </div>
+                    <button type="submit" class="w-full bg-teal-500 hover:bg-teal-600 text-slate-900 font-extrabold text-lg py-3 px-4 rounded-xl transition duration-300 shadow-lg focus:outline-none focus:ring-4 focus:ring-teal-500 focus:ring-offset-2 focus:ring-offset-slate-900">
+                        Commit Transaction
+                    </button>
+                </form>
+            </div>
+
+            <!-- Transaction History (2/3 width - Right) --><div class="lg:col-span-2">
+                <div class="dark-card p-6 rounded-2xl shadow-2xl border border-slate-700">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b border-slate-700 pb-4">
+                        <h2 class="text-2xl font-bold text-white flex items-center mb-3 sm:mb-0">
+                            <i data-lucide="history" class="w-6 h-6 mr-2 text-pink-400"></i> Full History
+                        </h2>
+                        <!-- Mini-Statement Button --><button id="share-statement-btn" class="flex items-center bg-pink-500 hover:bg-pink-600 text-white text-md font-semibold py-2 px-4 rounded-xl transition duration-300 shadow-lg hover:shadow-xl focus:outline-none focus:ring-4 focus:ring-pink-500 focus:ring-offset-2 focus:ring-offset-slate-900">
+                            <i data-lucide="copy" class="w-5 h-5 mr-2"></i> Copy Mini-Statement
+                        </button>
+                    </div>
+                    
+                    <div id="transactions-list" class="space-y-4 max-h-[85vh] overflow-y-auto pr-2">
+                        <!-- Transactions will be rendered here --><p id="no-transactions" class="text-center text-slate-500 italic p-6 border-4 border-dashed border-slate-700 rounded-lg">No transactions recorded yet. Start tracking!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- FOOTER ADDED HERE --><footer class="mt-10 p-4 text-center border-t border-slate-700">
+        <!-- Text size changed to text-4xl (H1 size) and tag changed for semantics --><h1 class="font-extrabold text-4xl text-gradient tracking-wider">SAVE MONEY SAVE FUTURE !</h1>
+        <p class="text-sm text-slate-500 mt-1">Built with Finance Flow.</p>
+    </footer>
+
+    <!-- Firebase Imports --><script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        // Removed 'getDocs' and 'query' imports to fix index issue
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Set log level for debugging
+        setLogLevel('error'); 
+
+        // --- GLOBAL SETUP ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-finance-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        let db, auth, userId;
+        // Use a public path so transactions are shared across users of this artifact (collaborative finance tracking)
+        const TRANSACTIONS_PATH = `artifacts/${appId}/public/data/transactions`; 
+        let transactions = [];
+
+        // UI Elements
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const authStatus = document.getElementById('auth-status');
+        const transactionsList = document.getElementById('transactions-list');
+        const noTransactionsMsg = document.getElementById('no-transactions');
+        const form = document.getElementById('transaction-form');
+        const shareBtn = document.getElementById('share-statement-btn');
+
+        // --- UTILITY FUNCTIONS ---
+
+        /**
+         * Shows a transient message box for user feedback (e.g., success, error).
+         * @param {string} message The message to display.
+         * @param {string} type 'success' or 'error'.
+         */
+        function showMessage(message, type) {
+            const msgBox = document.getElementById('message-box');
+            msgBox.textContent = message;
+            // Class list modified for dark mode visibility
+            msgBox.className = 'fixed top-5 right-5 z-50 p-3 rounded-xl shadow-2xl font-bold transition-all duration-300 opacity-100 transform translate-y-0';
+            
+            if (type === 'success') {
+                msgBox.classList.add('success-bg');
+                msgBox.classList.remove('danger-bg');
+            } else if (type === 'error') {
+                msgBox.classList.add('danger-bg');
+                msgBox.classList.remove('success-bg');
+            } else {
+                msgBox.classList.add('bg-gray-700', 'text-white');
+            }
+
+            setTimeout(() => {
+                msgBox.classList.replace('opacity-100', 'opacity-0');
+                msgBox.classList.add('translate-y-2');
+            }, 3000);
+            setTimeout(() => {
+                msgBox.classList.add('hidden');
+                msgBox.classList.remove('translate-y-2');
+            }, 3300); // Hide after transition
+            msgBox.classList.remove('hidden');
+        }
+
+        /**
+         * Formats a number as a currency string.
+         * @param {number} amount The amount to format.
+         * @returns {string} Formatted currency string.
+         */
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+            }).format(amount);
+        }
+        
+        /**
+         * Initializes Firebase authentication and Firestore.
+         */
+        async function initializeAppAndAuth() {
+            loadingIndicator.classList.remove('hidden');
+            
+            if (!firebaseConfig) {
+                console.error("Firebase config not available. Cannot initialize Firestore.");
+                loadingIndicator.classList.add('hidden');
+                authStatus.textContent = 'ERROR: Firebase configuration is missing.';
+                return;
+            }
+
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // 1. Authenticate the user
+                await new Promise(resolve => {
+                    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                        if (!user) {
+                             if (initialAuthToken) {
+                                await signInWithCustomToken(auth, initialAuthToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        }
+                        userId = auth.currentUser?.uid || 'anonymous';
+                        authStatus.textContent = `User ID: ${userId.substring(0, 8)}... (App: ${appId.substring(0, 8)}...)`;
+                        unsubscribe(); // Stop listening after first state change
+                        resolve();
+                    });
+                });
+
+                // 2. Setup real-time listener for transactions
+                setupRealtimeListener();
+
+            } catch (error) {
+                console.error("Error during Firebase initialization or authentication:", error);
+                showMessage('Failed to initialize application.', 'error');
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        // --- DASHBOARD AND RENDERING ---
+
+        /**
+         * Updates the dashboard totals based on the current transactions array.
+         */
+        function updateDashboard() {
+            let totalEarnings = 0;
+            let totalExpenses = 0;
+
+            transactions.forEach(t => {
+                const amount = t.amount || 0;
+                if (t.type === 'earning') {
+                    totalEarnings += amount;
+                } else if (t.type === 'expense') {
+                    totalExpenses += amount;
+                }
+            });
+
+            const currentBalance = totalEarnings - totalExpenses;
+
+            document.getElementById('total-earnings').textContent = formatCurrency(totalEarnings);
+            document.getElementById('total-expenses').textContent = formatCurrency(totalExpenses);
+            document.getElementById('current-balance').textContent = formatCurrency(currentBalance);
+            
+            const balanceElement = document.getElementById('current-balance');
+            // Remove previous color classes
+            balanceElement.classList.remove('text-green-600', 'text-red-600', 'text-white', 'text-teal-400', 'text-red-400'); 
+            
+            if (currentBalance > 0) {
+                // Set to white for positive balance (User Request)
+                balanceElement.classList.add('text-white'); 
+            } else if (currentBalance < 0) {
+                // Keep red for negative balance
+                balanceElement.classList.add('text-red-400');
+            } else {
+                // White for zero balance
+                balanceElement.classList.add('text-white');
+            }
+        }
+
+        /**
+         * Renders the transaction history list.
+         */
+        function renderTransactions() {
+            transactionsList.innerHTML = '';
+            
+            if (transactions.length === 0) {
+                noTransactionsMsg.classList.remove('hidden');
+                return;
+            }
+            noTransactionsMsg.classList.add('hidden');
+
+            // Sort by timestamp descending (newest first)
+            const sortedTransactions = transactions.sort((a, b) => 
+                (b.timestamp?.toDate() || new Date(b.date)).getTime() - (a.timestamp?.toDate() || new Date(a.date)).getTime()
+            );
+
+            sortedTransactions.forEach(t => {
+                const isEarning = t.type === 'earning';
+                const sign = isEarning ? '+' : '-';
+                const color = isEarning ? 'text-teal-400' : 'text-red-400';
+                const iconBgColor = isEarning ? 'bg-teal-900' : 'bg-red-900';
+                
+                // Data attributes containing transaction details for the share button
+                const dataAttrs = `data-type="${t.type}" data-desc="${t.description}" data-amount="${t.amount}" data-date="${t.date}"`;
+
+                const itemHtml = `
+                    <div class="transaction-item flex justify-between items-center p-4 rounded-xl shadow-md border border-slate-700">
+                        <div class="flex items-center space-x-4">
+                            <div class="p-3 rounded-full ${iconBgColor} flex-shrink-0">
+                                <i data-lucide="${isEarning ? 'trending-up' : 'trending-down'}" class="${color} w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-white">${t.description}</p>
+                                <p class="text-xs text-slate-400 mt-0.5">${t.date}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center space-x-4">
+                            <p class="font-extrabold text-xl ${color} tracking-tight">${sign}${formatCurrency(t.amount)}</p>
+                            <!-- Share Button added to each transaction -->
+                            <button class="share-transaction-btn p-2 rounded-full bg-slate-700 hover:bg-slate-600 transition duration-150" ${dataAttrs}>
+                                <i data-lucide="share-2" class="w-5 h-5 text-pink-400"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = itemHtml;
+                transactionsList.appendChild(tempDiv.firstChild);
+            });
+            // Re-initialize Lucide icons for the new elements
+            lucide.createIcons();
+        }
+
+
+        // --- FIRESTORE OPERATIONS ---
+
+        /**
+         * Sets up the real-time listener for the transactions collection.
+         */
+        function setupRealtimeListener() {
+            const transactionsColRef = collection(db, TRANSACTIONS_PATH);
+            
+            // Query: Get all transactions for the app, ordered by timestamp (newest first for quick access, although sorting happens client-side too).
+            const q = query(transactionsColRef, orderBy("timestamp", "desc"));
+
+            onSnapshot(q, (snapshot) => {
+                transactions = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                
+                updateDashboard();
+                renderTransactions();
+            }, (error) => {
+                console.error("Error listening to transactions:", error);
+                showMessage('Failed to load transaction data.', 'error');
+            });
+        }
+
+        /**
+         * Handles the submission of the transaction form.
+         * @param {Event} e The form submission event.
+         */
+        async function handleAddTransaction(e) {
+            e.preventDefault();
+
+            const type = document.getElementById('type').value;
+            const description = document.getElementById('description').value.trim();
+            const amount = parseFloat(document.getElementById('amount').value);
+            const date = document.getElementById('date').value;
+
+            if (!type || !description || isNaN(amount) || amount <= 0 || !date) {
+                showMessage('Please fill in all fields correctly.', 'error');
+                return;
+            }
+
+            const newTransaction = {
+                userId: userId,
+                type: type,
+                description: description,
+                amount: amount,
+                date: date,
+                timestamp: serverTimestamp() // Use server timestamp for reliable ordering
+            };
+
+            try {
+                const transactionsColRef = collection(db, TRANSACTIONS_PATH);
+                await addDoc(transactionsColRef, newTransaction);
+                showMessage(`Successfully added ${type}: ${description}.`, 'success');
+                form.reset(); // Clear the form on success
+                // Reset date to today after submission
+                document.getElementById('date').valueAsDate = new Date();
+            } catch (error) {
+                console.error("Error adding transaction: ", error);
+                showMessage('Error saving transaction. Check console.', 'error');
+            }
+        }
+
+        /**
+         * Generates a mini-statement and copies it to the clipboard.
+         */
+        function generateMiniStatement() {
+            if (transactions.length === 0) {
+                showMessage("No transactions to create a statement.", 'error');
+                return;
+            }
+
+            // Calculate totals
+            let totalEarnings = 0;
+            let totalExpenses = 0;
+
+            transactions.forEach(t => {
+                const amount = t.amount || 0;
+                if (t.type === 'earning') {
+                    totalEarnings += amount;
+                } else if (t.type === 'expense') {
+                    totalExpenses += amount;
+                }
+            });
+
+            const currentBalance = totalEarnings - totalExpenses;
+
+            // Get the last 10 transactions, sorted newest first
+            const statementTransactions = transactions
+                .sort((a, b) => 
+                    (b.timestamp?.toDate() || new Date(b.date)).getTime() - (a.timestamp?.toDate() || new Date(a.date)).getTime()
+                )
+                .slice(0, 10);
+
+            let statementText = `--- Mini Financial Statement ---\n`;
+            statementText += `\nSUMMARY:\n`;
+            statementText += `Total Earnings: ${formatCurrency(totalEarnings)}\n`;
+            statementText += `Total Expenses: ${formatCurrency(totalExpenses)}\n`;
+            statementText += `Current Balance: ${formatCurrency(currentBalance)}\n`;
+            statementText += `\nLAST ${statementTransactions.length} RECENT TRANSACTIONS:\n`;
+
+            if (statementTransactions.length === 0) {
+                 statementText += `(No recent transactions to display.)\n`;
+            } else {
+                statementTransactions.forEach(t => {
+                    const sign = t.type === 'earning' ? '+' : '-';
+                    // Adjust padding for better alignment in plain text
+                    const amountStr = formatCurrency(t.amount).padEnd(10, ' ');
+                    statementText += `${t.date} | ${sign}${amountStr} | ${t.description}\n`;
+                });
+            }
+            statementText += `\n--- Shared via Finance Flow (User ID: ${userId.substring(0, 8)}...) ---`;
+
+            // Copy to clipboard (using execCommand for better iFrame compatibility)
+            const tempInput = document.createElement('textarea');
+            tempInput.value = statementText;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            showMessage('Mini-Statement copied to clipboard!', 'success');
+        }
+        
+        /**
+         * Handles sharing the details of a single transaction.
+         * @param {Event} e The click event.
+         */
+        function handleShareTransaction(e) {
+            const button = e.target.closest('.share-transaction-btn');
+            if (!button) return;
+
+            const type = button.dataset.type;
+            const description = button.dataset.desc;
+            const amount = parseFloat(button.dataset.amount);
+            const date = button.dataset.date;
+            
+            const typeDisplay = type.charAt(0).toUpperCase() + type.slice(1);
+            const sign = type === 'earning' ? '+' : '-';
+            const formattedAmount = formatCurrency(amount);
+
+            const shareText = `💰 Financial Flow Entry\n` +
+                              `Date: ${date}\n` +
+                              `Type: ${typeDisplay}\n` +
+                              `Description: ${description}\n` +
+                              `Amount: ${sign}${formattedAmount}`;
+
+            // Copy to clipboard
+            const tempInput = document.createElement('textarea');
+            tempInput.value = shareText;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            showMessage(`Transaction for '${description}' copied!`, 'success');
+            e.stopPropagation(); // Prevent potential parent click handlers from firing
+        }
+
+        // --- EVENT LISTENERS AND INITIALIZATION ---
+        window.addEventListener('load', () => {
+            // Set today's date as default for convenience
+            document.getElementById('date').valueAsDate = new Date();
+            
+            // Initialize app
+            initializeAppAndAuth();
+            
+            // Add form submit listener
+            form.addEventListener('submit', handleAddTransaction);
+            
+            // Add share button listener (for the mini-statement)
+            shareBtn.addEventListener('click', generateMiniStatement);
+            
+            // Add click listener for individual transaction share buttons (delegation)
+            transactionsList.addEventListener('click', handleShareTransaction);
+            
+            // Initialize Lucide icons
+            lucide.createIcons();
+        });
+
+    </script>
+</body>
+</html>
